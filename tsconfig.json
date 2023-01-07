@@ -1,0 +1,15 @@
+{
+    "compilerOptions": {
+        "declaration": false,
+        "declarationMap": false,
+        "diagnostics": true,
+        "allowJs": false,
+        "alwaysStrict": false,
+        "outDir": "./dist",
+        "lib": [
+            "ESNext"
+        ],
+        "target": "ESNext",
+        "module": "CommonJS"
+    }
+}
