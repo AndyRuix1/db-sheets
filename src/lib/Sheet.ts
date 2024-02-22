@@ -342,8 +342,7 @@ export default class Sheets {
         const position = initPosition ? this.getPosition(initPosition) : this.currentTablePosition;
         const spreadsheetId = this.currentSheetId;
         const sheetName = this.currentSheetName;
-        const values = await this.getTableValues<T>({ initPosition });
-        const endLetter = await this.getLastColumn(position.letter, position.number);
+        const [values, endLetter] = await Promise.all([this.getTableValues<T>({ initPosition }), this.getLastColumn(position.letter, position.number)]);
         const rowsToEdit: number[] = [];
         let currentRow = position.number
         for (let i in values) {
