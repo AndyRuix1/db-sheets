@@ -173,8 +173,7 @@ export default class Sheets {
      */
     private async objectToArray({ initPosition, values }: { initPosition?: string, values: any[] }): Promise<string[][]> {
         const position = initPosition ? this.getPosition(initPosition) : this.currentTablePosition;
-
-        const headers = await this.getTableHeaders(initPosition);
+        const headers = await this.getTableHeaders(`${position.letter}:${position.number}`);
         const finalValues: string[][] = [];
         values.forEach((value) => {
             const tempArray: string[] = [];
@@ -386,8 +385,7 @@ export default class Sheets {
         };
 
         if (rowsToDelete.length === 0) return;
-        const sheetId = await this.getSheetIdBySheetName();
-        const tableHeaders = await this.getTableHeaders(initPosition);
+        const [sheetId, tableHeaders] = await Promise.all([this.getSheetIdBySheetName(), this.getTableHeaders(initPosition)]);
         const endLetter = this.sumLetter(position.letter, tableHeaders.length + 1);
 
         for (const row of rowsToDelete.reverse()) {
