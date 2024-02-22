@@ -16,9 +16,9 @@ export interface ISheet$Cache$Options {
     saveMode?: 'ram' | 'json'
 }
 
-export interface ISheet$Cache$Structure {
+export interface ISheet$Cache$Structure<T = any> {
     [idGenerated: string]: {
         lastUpdate: number;
-        data: any;
+        data: T;
     }
 }

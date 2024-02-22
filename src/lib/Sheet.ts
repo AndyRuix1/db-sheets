@@ -12,6 +12,7 @@ export default class Sheets extends Cache {
     private currentSheetName: string = '';
     private currentTablePosition: ITablePosition = { letter: 'A', number: 1 };
     private cacheId: string = '';
+    private useCache = false;
     private gAuthCreds: IAuthData = {
         client_email: '',
         private_key: '',
@@ -21,6 +22,7 @@ export default class Sheets extends Cache {
     constructor(authInfo: IAuthData, options?: ISheet$Options) {
         const cacheId = generateRandomId();
         super(options?.cache, cacheId);
+        this.useCache = typeof options.cache === 'object';
         this.cacheId = cacheId;
         this.gAuthCreds.client_email = authInfo.client_email;
         this.gAuthCreds.private_key = authInfo.private_key;
@@ -236,12 +238,18 @@ export default class Sheets extends Cache {
         const position = initialPosition ? this.getPosition(initialPosition) : this.currentTablePosition;
         const endLetter = await this.getLastColumn(position.letter, position.number);
         const range = `${this.currentSheetName}!${position.letter}${position.number}:${endLetter}${position.number}`;
+        const cacheData = this.getCacheData(range);
+
+        if (this.useCache && typeof cacheData !== 'boolean') return cacheData.data[`headers_${range}`];
 
         const tableHeaders = await this.sheets.spreadsheets.values.get({
             spreadsheetId: this.currentSheetId,
             range: range,
         });
-        return tableHeaders?.data?.values?.length ? tableHeaders.data.values[0] : [];
+        const response = tableHeaders?.data?.values?.length ? tableHeaders.data.values[0] : [];
+        if (this.useCache) this.updateCache(`headers_${range}`, response);
+
+        return response;;
     };
 
     /**

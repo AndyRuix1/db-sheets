@@ -69,7 +69,7 @@ export default abstract class Cache {
         }
     }
 
-    public getCacheData(cacheKey: string): ISheet$Cache$Structure[0]['data'] | boolean {
+    public getCacheData(cacheKey: string): ISheet$Cache$Structure['key']['data'] | boolean {
         const { saveMode, updateFreq } = this.cacheOptions;
         if (saveMode === 'ram') {
             const lastCacheUpdate = getSecondsDifferences(Date.now(), ramCache[this.cacheIdGenerated]?.lastUpdate);
