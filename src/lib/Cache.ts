@@ -3,7 +3,7 @@ import fs from 'fs';
 import { join as pathJoin } from 'path';
 import { createFile, deleteFile, getFile, getSecondsDifferences } from './util';
 
-export let ramCache: ISheet$Cache$Structure = {};
+let ramCache: ISheet$Cache$Structure = {};
 const cacheFolderName = 'cache'
 
 export default abstract class Cache {
@@ -102,7 +102,6 @@ export default abstract class Cache {
 }
 
 export const clearAllCache = () => {
-    console.log('BORRAR CACHE ACTIVADO');
     const folderPath = pathJoin(__dirname, cacheFolderName);
     if (fs.existsSync(folderPath)) fs.rmdirSync(folderPath, { recursive: true });
 }
