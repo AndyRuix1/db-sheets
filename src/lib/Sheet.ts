@@ -39,7 +39,7 @@ export default class Sheets {
     };
 
     /**
-     * @description Metodo para conocer la siguiente letra a partir de una, ejemplo: A -> B, AA -> AB, ZZ -> AAA
+     * @description Método para conocer la siguiente letra a partir de una, ejemplo: A -> B, AA -> AB, ZZ -> AAA
      * @param letter Letra a procesar
      * @returns Letra procesada.
      */
