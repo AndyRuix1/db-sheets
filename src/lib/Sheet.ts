@@ -249,7 +249,7 @@ export default class Sheets extends Cache {
         const response = tableHeaders?.data?.values?.length ? tableHeaders.data.values[0] : [];
         if (this.useCache) this.updateCache(`headers_${range}`, response);
 
-        return response;;
+        return response;
     };
 
     /**
@@ -305,10 +305,19 @@ export default class Sheets extends Cache {
         const tableHeaders = await this.getTableHeaders(initPosition);
         const endLetter = await this.getLastColumn(position.letter, position.number);
         const endNumber = await this.getLastRow(position.letter, position.number);
+        const range = `${this.currentSheetName}!${position.letter}${position.number + 1}:${endLetter}${position.number + endNumber + 1}`;
+
+        if (this.useCache) {
+            const cache = this.getCacheData(`values_${range}`);
+            if (typeof cache !== 'boolean') {
+                if (filter) return cache.data[`values_${range}`].filter(filter);
+                return cache.data[`values_${range}`];
+            }
+        }
 
         const tableBody = await this.sheets.spreadsheets.values.get({
             spreadsheetId: this.currentSheetId,
-            range: `${this.currentSheetName}!${position.letter}${position.number + 1}:${endLetter}${position.number + endNumber + 1}`,
+            range: range,
         });
         const bodyArray = tableBody.data?.values ?? [[]];
         const result: T[] = [];
@@ -323,8 +332,9 @@ export default class Sheets extends Cache {
             result.push(obj as T);
         };
         if (result.length === 1 && Object.values(result[0] as T[]).every(val => val === undefined)) return [];
-        if (typeof filter === 'function') return result.filter(filter) as T[];
-        return result as T[];
+
+        if (this.useCache) this.updateCache(`values_${range}`, result);
+        return typeof filter === 'function' ? result.filter(filter) : result as T[];
     };
 
     /**
