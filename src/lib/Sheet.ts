@@ -1,23 +1,27 @@
-import type { IAuthData, ITablePosition } from '../types/Sheet';
+import type { IAuthData, ITablePosition, ISheet$Options } from '../types/Sheet';
 import { google, sheets_v4 } from 'googleapis';
 import { GoogleAuth, JWT } from 'google-auth-library';
+import Cache from './Cache';
+import { generateRandomId } from './util';
 
-
-export default class Sheets {
+export default class Sheets extends Cache {
     private sheets: sheets_v4.Sheets;
     private jwtClient: JWT;
     private gAuth: GoogleAuth;
     private currentSheetId: string = '';
     private currentSheetName: string = '';
     private currentTablePosition: ITablePosition = { letter: 'A', number: 1 };
-
+    private cacheId: string = '';
     private gAuthCreds: IAuthData = {
         client_email: '',
         private_key: '',
         scopes: []
     };
 
-    constructor(authInfo: IAuthData) {
+    constructor(authInfo: IAuthData, options?: ISheet$Options) {
+        const cacheId = generateRandomId();
+        super(options?.cache, cacheId);
+        this.cacheId = cacheId;
         this.gAuthCreds.client_email = authInfo.client_email;
         this.gAuthCreds.private_key = authInfo.private_key;
         this.gAuthCreds.scopes = authInfo.scopes;
@@ -212,8 +216,8 @@ export default class Sheets {
     private async getSheetIdBySheetName(): Promise<number> {
         const sheetResponse = await this.sheets.spreadsheets.get({ spreadsheetId: this.currentSheetId });
         const sheets = sheetResponse.data.sheets;
-        let sheetId = 0;
         if (!sheets) return 0;
+        let sheetId = 0;
         for (let i = 0; i < sheets.length; i++) {
             if (sheets[i]?.properties?.title === this.currentSheetName) {
                 sheetId = i;
@@ -230,10 +234,12 @@ export default class Sheets {
      */
     public async getTableHeaders(initialPosition?: string): Promise<string[]> {
         const position = initialPosition ? this.getPosition(initialPosition) : this.currentTablePosition;
-        const endLetter = await this.getLastColumn(position.letter, position.number)
+        const endLetter = await this.getLastColumn(position.letter, position.number);
+        const range = `${this.currentSheetName}!${position.letter}${position.number}:${endLetter}${position.number}`;
+
         const tableHeaders = await this.sheets.spreadsheets.values.get({
             spreadsheetId: this.currentSheetId,
-            range: `${this.currentSheetName}!${position.letter}${position.number}:${endLetter}${position.number}`,
+            range: range,
         });
         return tableHeaders?.data?.values?.length ? tableHeaders.data.values[0] : [];
     };
