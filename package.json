@@ -1,7 +1,7 @@
 {
   "name": "data-sheets",
   "version": "1.0.0",
-  "description": "Libreria para manipular tablas de Google Sheets de manera dinamica con objetos y mucha facilidad.",
+  "description": "Librería para manipular tablas de Google Sheets de manera dinámica con objetos y mucha facilidad.",
   "main": "src/index.js",
   "scripts": {
     "dev": "nodemon",
@@ -11,10 +11,10 @@
   "author": "AndyKenway#2531",
   "license": "ISC",
   "dependencies": {
-    "google-auth-library": "^8.7.0",
-    "googleapis": "^110.0.0"
+    "google-auth-library": "^9.6.3",
+    "googleapis": "^133.0.0"
   },
   "devDependencies": {
-    "@types/node": "^18.11.18"
+    "@types/node": "^20.11.19"
   }
 }
