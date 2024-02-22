@@ -238,9 +238,12 @@ export default class Sheets extends Cache {
         const position = initialPosition ? this.getPosition(initialPosition) : this.currentTablePosition;
         const endLetter = await this.getLastColumn(position.letter, position.number);
         const range = `${this.currentSheetName}!${position.letter}${position.number}:${endLetter}${position.number}`;
-        const cacheData = this.getCacheData(range);
 
-        if (this.useCache && typeof cacheData !== 'boolean') return cacheData.data[`headers_${range}`];
+        if (this.useCache) {
+            const cacheData = this.getCacheData(range);
+            if (typeof cacheData !== 'boolean') return cacheData.data[`headers_${range}`];
+        }
+
 
         const tableHeaders = await this.sheets.spreadsheets.values.get({
             spreadsheetId: this.currentSheetId,
