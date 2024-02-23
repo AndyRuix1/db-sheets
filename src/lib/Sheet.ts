@@ -241,7 +241,7 @@ export default class Sheets extends Cache {
 
         if (this.useCache) {
             const cacheData = this.getCacheData(range);
-            if (typeof cacheData !== 'boolean') return cacheData.data[`headers_${range}`];
+            if (typeof cacheData !== 'boolean') return cacheData.data[`${this.cacheId}headers_${range}`];
         }
 
 
@@ -250,7 +250,7 @@ export default class Sheets extends Cache {
             range: range,
         });
         const response = tableHeaders?.data?.values?.length ? tableHeaders.data.values[0] : [];
-        if (this.useCache) this.updateCache(`headers_${range}`, response);
+        if (this.useCache) this.updateCache(`${this.cacheId}headers_${range}`, response);
 
         return response;
     };
