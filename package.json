@@ -1,16 +1,31 @@
 {
-  "name": "data-sheets",
-  "version": "1.0.0",
+  "name": "db-sheets",
+  "version": "1.1.0",
   "description": "Librería para manipular tablas de Google Sheets de manera dinámica con objetos y mucha facilidad.",
   "main": "src/index.js",
   "scripts": {
-    "dev": "nodemon",
     "build": "tsc -p . --diagnostics",
     "test": "jest"
   },
-  "keywords": [],
-  "author": "AndyKenway#2531",
+  "keywords": [
+    "google-sheets",
+    "google-api",
+    "typescript"
+  ],
+  "author": {
+    "name": "Andy Kenway",
+    "email": "andyruix1@gmail.com",
+    "url": "https://github.com/AndyRuix1"
+  },
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AndyRuix1/db-sheets.git"
+  },
+  "bugs": {
+    "url": "https://github.com/AndyRuix1/db-sheets/issues"
+  },
+  "homepage": "https://github.com/AndyRuix1/db-sheets",
   "dependencies": {
     "google-auth-library": "^9.6.3",
     "googleapis": "^133.0.0"
