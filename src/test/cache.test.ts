@@ -1,4 +1,4 @@
-import { debug, inspect, promisify } from "util";
+import { promisify } from "util";
 import Cache from "../lib/Cache";
 const wait = promisify(setTimeout);
 
@@ -25,7 +25,6 @@ describe.skip('[JSON OPTION]: Pruebas unitarias del sistema de Cache', () => {
         expect(newData).toEqual(false);
     });
     test('Obtener cache vencido', async () => {
-        await wait(testInstanceConfigs.updateFreq * 1000);
         const newData = await testInstance.getCacheData('test1');
         expect(newData).toEqual(false);
     }, 5000);

@@ -3,8 +3,8 @@ import fs from 'fs';
 import { join as pathJoin } from 'path';
 import { createFile, deleteFile, getFile, getSecondsDifferences } from './util';
 
-let ramCache: ISheet$Cache$Structure = {};
-const cacheFolderName = 'cache'
+export const ramCache: ISheet$Cache$Structure = {};
+const cacheFolderName = 'cache';
 
 export default abstract class Cache {
     private cacheOptions: ISheet$Cache$Options = {
@@ -37,8 +37,8 @@ export default abstract class Cache {
         const { saveMode } = this.cacheOptions;
         const cacheFilepath = this.getCacheFilepath();
 
-        if (saveMode === 'ram' && ramCache[this.cacheIdGenerated].data[cacheKey]) {
-            delete ramCache[this.cacheIdGenerated].data[cacheKey];
+        if (saveMode === 'ram') {
+            delete ramCache[cacheKey];
         } else if (saveMode === 'json' && fs.existsSync(cacheFilepath)) {
             const cacheFile = getFile(cacheFilepath);
             delete cacheFile[cacheKey];
@@ -48,14 +48,12 @@ export default abstract class Cache {
 
     public updateCache(cacheKey: string, newData: any) {
         const { saveMode } = this.cacheOptions;
-
         if (saveMode === 'ram') {
-            ramCache[this.cacheIdGenerated] = {
-                data: {
-                    [cacheKey]: newData
-                },
+            ramCache[cacheKey] = {
+                data: newData,
                 lastUpdate: Date.now()
-            }
+            };
+
         } else if (saveMode === 'json') {
             const filePath = this.getCacheFilepath();
             const cacheFile = getFile<ISheet$Cache$Structure>(filePath);
@@ -72,12 +70,13 @@ export default abstract class Cache {
     public getCacheData(cacheKey: string): ISheet$Cache$Structure['key']['data'] | boolean {
         const { saveMode, updateFreq } = this.cacheOptions;
         if (saveMode === 'ram') {
-            const lastCacheUpdate = getSecondsDifferences(Date.now(), ramCache[this.cacheIdGenerated]?.lastUpdate);
+            if (!ramCache[cacheKey]) return false;
+            const lastCacheUpdate = getSecondsDifferences(Date.now(), ramCache[cacheKey].lastUpdate);
             if (lastCacheUpdate > updateFreq) {
                 this.deleteCache(cacheKey);
                 return false;
-            };
-            return ramCache[this.cacheIdGenerated]?.data[cacheKey] ?? false;
+            }
+            return ramCache[cacheKey].data;
         } else if (saveMode === 'json') {
             const filePath = this.getCacheFilepath();
             const cacheFile = getFile<ISheet$Cache$Structure>(filePath);
@@ -91,14 +90,6 @@ export default abstract class Cache {
         }
 
     }
-
-    public getAllCache() {
-        const { saveMode } = this.cacheOptions;
-        if (saveMode === 'ram') return ramCache;
-        else if (saveMode === 'json') return getFile(this.getCacheFilepath());
-
-    }
-
 }
 
 export const clearAllCache = () => {

@@ -5,6 +5,7 @@ import Cache from './Cache';
 import { generateRandomId } from './util';
 
 export default class Sheets extends Cache {
+    private static instanceCounter = 0;
     private sheets: sheets_v4.Sheets;
     private jwtClient: JWT;
     private gAuth: GoogleAuth;
@@ -20,9 +21,10 @@ export default class Sheets extends Cache {
     };
 
     constructor(authInfo: IAuthData, options?: ISheet$Options) {
+        Sheets.instanceCounter += 1;
         const cacheId = generateRandomId();
         super(options?.cache, cacheId);
-        this.useCache = typeof options.cache === 'object';
+        this.useCache = typeof options?.cache === 'object';
         this.cacheId = cacheId;
         this.gAuthCreds.client_email = authInfo.client_email;
         this.gAuthCreds.private_key = authInfo.private_key;
@@ -240,17 +242,16 @@ export default class Sheets extends Cache {
         const range = `${this.currentSheetName}!${position.letter}${position.number}:${endLetter}${position.number}`;
 
         if (this.useCache) {
-            const cacheData = this.getCacheData(range);
-            if (typeof cacheData !== 'boolean') return cacheData.data[`${this.cacheId}headers_${range}`];
+            const cacheData = this.getCacheData(`${Sheets.instanceCounter}-${this.currentSheetName}-${this.cacheId}-headers`);
+            if (typeof cacheData !== 'boolean') return cacheData;
         }
-
 
         const tableHeaders = await this.sheets.spreadsheets.values.get({
             spreadsheetId: this.currentSheetId,
             range: range,
         });
         const response = tableHeaders?.data?.values?.length ? tableHeaders.data.values[0] : [];
-        if (this.useCache) this.updateCache(`${this.cacheId}headers_${range}`, response);
+        if (this.useCache) this.updateCache(`${Sheets.instanceCounter}-${this.currentSheetName}-${this.cacheId}-headers`, response);
 
         return response;
     };
@@ -303,7 +304,7 @@ export default class Sheets extends Cache {
      * @param filter Filtro para obtener los valores de la tabla filtrados. 
      * @returns {T[]} Todos los valores de la tabla indicada.
      */
-    public async getTableValues<T>({ initPosition, filter }: { initPosition?: string, filter?: { (val: T): boolean } }): Promise<T[]> {
+    public async getTableValues<T = any>({ initPosition, filter }: { initPosition?: string, filter?: { (val: T): boolean } }): Promise<T[]> {
         const position = initPosition ? this.getPosition(initPosition) : this.currentTablePosition;
         const tableHeaders = await this.getTableHeaders(initPosition);
         const endLetter = await this.getLastColumn(position.letter, position.number);
@@ -311,10 +312,10 @@ export default class Sheets extends Cache {
         const range = `${this.currentSheetName}!${position.letter}${position.number + 1}:${endLetter}${position.number + endNumber + 1}`;
 
         if (this.useCache) {
-            const cache = this.getCacheData(`values_${range}`);
+            const cache = this.getCacheData(`${Sheets.instanceCounter}-${this.currentSheetName}-${this.cacheId}-values`);
             if (typeof cache !== 'boolean') {
-                if (filter) return cache.data[`values_${range}`].filter(filter);
-                return cache.data[`values_${range}`];
+                if (filter) return cache.filter(filter);
+                return cache;
             }
         }
 
@@ -336,7 +337,7 @@ export default class Sheets extends Cache {
         };
         if (result.length === 1 && Object.values(result[0] as T[]).every(val => val === undefined)) return [];
 
-        if (this.useCache) this.updateCache(`values_${range}`, result);
+        if (this.useCache) this.updateCache(`${Sheets.instanceCounter}-${this.currentSheetName}-${this.cacheId}-values`, result);
         return typeof filter === 'function' ? result.filter(filter) : result as T[];
     };
 
@@ -357,6 +358,7 @@ export default class Sheets extends Cache {
                 values: finalValues
             }
         });
+        if (this.useCache) this.deleteCache(`${Sheets.instanceCounter}-${this.currentSheetName}-${this.cacheId}-values`);
     };
 
     /**
@@ -392,6 +394,7 @@ export default class Sheets extends Cache {
                 },
             });
         };
+        if (this.useCache) this.deleteCache(`${Sheets.instanceCounter}-${this.currentSheetName}-${this.cacheId}-values`);
     };
 
     /**
@@ -434,6 +437,7 @@ export default class Sheets extends Cache {
                     ]
                 }
             });
+            if (this.useCache) this.deleteCache(`${Sheets.instanceCounter}-${this.currentSheetName}-${this.cacheId}-values`);
         };
     };
 };
