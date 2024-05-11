@@ -1,8 +1,8 @@
 import type { IAuthData, ITablePosition, ISheet$Options } from '../types/Sheet';
 import { google, sheets_v4 } from 'googleapis';
 import { GoogleAuth, JWT } from 'google-auth-library';
-import Cache from './Cache';
 import { generateRandomId } from './util';
+import Cache from './Cache';
 
 export default class Sheets extends Cache {
     private static instanceCounter = 0;
@@ -82,7 +82,7 @@ export default class Sheets extends Cache {
     };
 
     /**
-     * @description Retorna el numero correspondiente al abecedario, en caso de superar la Z (ej: AA, AB, etc) se devuelve el numero correspondiente para una hoja de calcula. 
+     * @description Retorna el numero correspondiente al abecedario, en caso de superar la Z (ej: AA, AB, etc) se devuelve el numero correspondiente para una hoja de calculo.
      * @param letter Letra la cual requiere transformar a numérico.
      * @return numero correspondiente a la letra.
      */
@@ -103,9 +103,10 @@ export default class Sheets extends Cache {
      * @returns Se retorna un objeto separando la letra del numero.
      */
     private getPosition(position: string): ITablePosition {
+        const positionSplitted = position.split(':');
         return {
-            letter: position.split(':')[0],
-            number: parseInt(position.split(':')[1])
+            letter: positionSplitted[0],
+            number: Number(positionSplitted[1])
         };
     };
 
@@ -206,7 +207,6 @@ export default class Sheets extends Cache {
         if (typeof values === 'object' && values !== null) {
             for (let i = 0; i < Object.keys(valuesObject as Object).length; i++) {
                 const key = Object.keys(values as Object)[i] ?? '';
-                //@ts-ignore
                 if (typeof valuesObject[key] === 'string' && !isNaN(valuesObject[key])) valuesObject[key] = parseInt(valuesObject[key]);
             };
         };
@@ -381,7 +381,7 @@ export default class Sheets extends Cache {
         };
         if (rowsToEdit.length === 0) return;
 
-        for (let row of rowsToEdit.reverse()) {
+        for (let row of rowsToEdit.toReversed()) {
             const initialValues = values.filter(filter)[0];
             const finalValues = { ...initialValues, ...valuesUpdate };
             const valuesToUpdate = await this.objectToArray({ initPosition, values: [this.formatValues<T>(finalValues)] },);
@@ -417,7 +417,7 @@ export default class Sheets extends Cache {
         const [sheetId, tableHeaders] = await Promise.all([this.getSheetIdBySheetName(), this.getTableHeaders(initPosition)]);
         const endLetter = this.sumLetter(position.letter, tableHeaders.length + 1);
 
-        for (const row of rowsToDelete.reverse()) {
+        for (const row of rowsToDelete.toReversed()) {
             await this.sheets.spreadsheets.batchUpdate({
                 spreadsheetId: this.currentSheetId,
                 requestBody: {

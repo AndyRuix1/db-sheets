@@ -1,7 +1,7 @@
 import type { ISheet$Cache$Options, ISheet$Cache$Structure } from '../types/Cache';
-import fs from 'fs';
 import { join as pathJoin } from 'path';
 import { createFile, deleteFile, getFile, getSecondsDifferences } from './util';
+import fs from 'fs';
 
 export const ramCache: ISheet$Cache$Structure = {};
 const cacheFolderName = 'cache';

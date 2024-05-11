@@ -1,7 +1,7 @@
 import fs from 'fs';
 
 export const generateRandomId = (): string => Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-export const getSecondsDifferences = (startTimeInMillis: number, endTimeInMillis: number) => Math.abs((endTimeInMillis - startTimeInMillis) / 1000);
+export const getSecondsDifferences = (startTimeInMilis: number, endTimeInMilis: number) => Math.abs((endTimeInMilis - startTimeInMilis) / 1000);
 
 export const updateFile = (path: string, content: any): boolean => {
     if (!fs.existsSync(path)) return false;
