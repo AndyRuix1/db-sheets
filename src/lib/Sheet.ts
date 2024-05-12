@@ -3,7 +3,7 @@ import { google, sheets_v4 } from 'googleapis';
 import { GoogleAuth, JWT } from 'google-auth-library';
 import { generateRandomId } from './util';
 import Cache from './Cache';
-
+const successCodes: Readonly<number[]> = [200, 201, 202];
 export default class SheetsManager extends Cache {
     private static instanceCounter = 0;
     private sheets: sheets_v4.Sheets;
@@ -307,12 +307,8 @@ export default class SheetsManager extends Cache {
      * @returns {T[]} Todos los valores de la tabla indicada.
      */
     public async getTableValues<T = any>(options?: { initPosition?: string, filter?: { (val: T): boolean } }): Promise<T[]> {
-        const { initPosition, filter } = options;
+        const { initPosition, filter } = options ?? { initPosition: undefined, filter: undefined };
         const position = initPosition ? this.getPosition(initPosition) : this.currentTablePosition;
-        const tableHeaders = await this.getTableHeaders(initPosition);
-        const endLetter = await this.getLastColumn(position.letter, position.number);
-        const endNumber = await this.getLastRow(position.letter, position.number);
-        const range = `${this.currentSheetName}!${position.letter}${position.number + 1}:${endLetter}${position.number + endNumber + 1}`;
 
         if (this.useCache) {
             const cache = this.getCacheData(`${SheetsManager.instanceCounter}-${this.currentSheetName}-${this.cacheId}-values`);
@@ -321,6 +317,8 @@ export default class SheetsManager extends Cache {
                 return cache;
             }
         }
+        const [tableHeaders, endLetter, endNumber] = await Promise.all([this.getTableHeaders(initPosition), this.getLastColumn(position.letter, position.number), this.getLastRow(position.letter, position.number)]);
+        const range = `${this.currentSheetName}!${position.letter}${position.number + 1}:${endLetter}${position.number + endNumber + 1}`;
 
         const tableBody = await this.sheets.spreadsheets.values.get({
             spreadsheetId: this.currentSheetId,
@@ -363,16 +361,17 @@ export default class SheetsManager extends Cache {
             }
         });
         if (this.useCache) this.deleteCache(`${SheetsManager.instanceCounter}-${this.currentSheetName}-${this.cacheId}-values`);
-        return [200, 201, 202].includes(appendStatus.status);
+        return successCodes.includes(appendStatus.status);
     };
 
     /**
      * @description Método para actualizar valores de la tabla por medio de un filtro. 
      * @param initPosition Posición inicial de la tabla a trabajar. Formato: A:1 (Opcional si ya se agrego en la instancia)
-     * @param values Valores que tendrán las filas afectadas por el filtro.
-     * @param filter Filtro con el que se buscaran las filas y afectar.
+     * @param values Nuevos valores que tendrán las filas encontradas con el filtro.
+     * @param filter Filtro con el que se buscarán las filas a afectar.
+     * @returns {boolean[]} Lista de estados de los valores ingresados. 
      */
-    public async updateValues<T>({ initPosition, filter, valuesUpdate }: { initPosition?: string, filter: { (val: T): boolean }, valuesUpdate: T }): Promise<void> {
+    public async updateValues<T = any>({ initPosition, filter, valuesUpdate }: { initPosition?: string, filter: { (val: T): boolean }, valuesUpdate: Partial<T> }): Promise<boolean[]> {
         const position = initPosition ? this.getPosition(initPosition) : this.currentTablePosition;
         const spreadsheetId = this.currentSheetId;
         const sheetName = this.currentSheetName;
@@ -385,31 +384,34 @@ export default class SheetsManager extends Cache {
             if (filter(obj)) rowsToEdit.push(currentRow);
         };
         if (rowsToEdit.length === 0) return;
-
+        const resultCodes: number[] = [];
         for (let row of rowsToEdit.toReversed()) {
             const initialValues = values.filter(filter)[0];
             const finalValues = { ...initialValues, ...valuesUpdate };
             const valuesToUpdate = await this.objectToArray({ initPosition, values: [this.formatValues<T>(finalValues)] });
-            await this.sheets.spreadsheets.values.update({
+            const savedStatus = await this.sheets.spreadsheets.values.update({
                 spreadsheetId,
                 range: `${sheetName}!${position.letter}${row}:${endLetter}${row}`,
                 valueInputOption: 'RAW',
                 requestBody: {
                     values: valuesToUpdate
-                },
+                }
             });
+            resultCodes.push(savedStatus.status);
         };
         if (this.useCache) this.deleteCache(`${SheetsManager.instanceCounter}-${this.currentSheetName}-${this.cacheId}-values`);
+        return resultCodes.map(result => successCodes.includes(result));
     };
 
     /**
      * @description Método para eliminar filas por medio de un filtro.
      * @param initPosition Posición inicial de la tabla a trabajar. Formato: A:1 (Opcional si ya se agrego en la instancia)
      * @param filter Filtro con el que se buscaran las filas y eliminarlas.
+     * @returns {boolean[]} Lista de éxitos o fracasos siendo `true` para éxito y `false` para fracaso
      */
-    public async deleteRowsByFilter<T>({ initPosition, filter }: { initPosition?: string, filter: { (val: T): boolean } }) {
+    public async deleteRowsByFilter<T>({ initPosition, filter }: { initPosition?: string, filter: (val: T) => boolean }): Promise<boolean[]> {
         const position = initPosition ? this.getPosition(initPosition) : this.currentTablePosition;
-        const values = await this.getTableValues<T>({ initPosition });
+        const values = await this.getTableValues<T>({ initPosition: `${position.letter}:${position.number}` });
         const rowsToDelete: number[] = [];
         let currentRow = position.number;
         for (let i in values) {
@@ -418,12 +420,24 @@ export default class SheetsManager extends Cache {
             if (filter(row)) rowsToDelete.push(currentRow);
         };
 
-        if (rowsToDelete.length === 0) return;
-        const [sheetId, tableHeaders] = await Promise.all([this.getSheetIdBySheetName(), this.getTableHeaders(initPosition)]);
+        if (rowsToDelete.length === 0) return [];
+        const [sheetId, tableHeaders] = await Promise.all([this.getSheetIdBySheetName(), this.getTableHeaders(`${position.letter}:${position.number}`)]);
         const endLetter = this.sumLetter(position.letter, tableHeaders.length + 1);
-
+        const deleteStatusList: number[] = [];
         for (const row of rowsToDelete.toReversed()) {
-            await this.sheets.spreadsheets.batchUpdate({
+            console.log({
+                deleteRange: {
+                    shiftDimension: 'ROWS',
+                    range: {
+                        sheetId: sheetId,
+                        startRowIndex: row - 1,
+                        endRowIndex: row,
+                        startColumnIndex: this.letterToNumber(position.letter),
+                        endColumnIndex: this.letterToNumber(endLetter)
+                    }
+                }
+            })
+            const deleteStatus = await this.sheets.spreadsheets.batchUpdate({
                 spreadsheetId: this.currentSheetId,
                 requestBody: {
                     requests: [
@@ -442,7 +456,10 @@ export default class SheetsManager extends Cache {
                     ]
                 }
             });
-            if (this.useCache) this.deleteCache(`${SheetsManager.instanceCounter}-${this.currentSheetName}-${this.cacheId}-values`);
+            deleteStatusList.push(deleteStatus.status);
         };
+        if (this.useCache) this.deleteCache(`${SheetsManager.instanceCounter}-${this.currentSheetName}-${this.cacheId}-values`);
+
+        return deleteStatusList.map(status => successCodes.includes(status));
     };
 };
