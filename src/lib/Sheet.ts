@@ -4,7 +4,7 @@ import { GoogleAuth, JWT } from 'google-auth-library';
 import { generateRandomId } from './util';
 import Cache from './Cache';
 
-export default class Sheets extends Cache {
+export default class SheetsManager extends Cache {
     private static instanceCounter = 0;
     private sheets: sheets_v4.Sheets;
     private jwtClient: JWT;
@@ -21,7 +21,7 @@ export default class Sheets extends Cache {
     };
 
     constructor(authInfo: IAuthData, options?: ISheet$Options) {
-        Sheets.instanceCounter += 1;
+        SheetsManager.instanceCounter += 1;
         const cacheId = generateRandomId();
         super(options?.cache, cacheId);
         this.useCache = typeof options?.cache === 'object';
@@ -205,7 +205,8 @@ export default class Sheets extends Cache {
     private formatValues<T>(values: T): T {
         const valuesObject = { ...values };
         if (typeof values === 'object' && values !== null) {
-            for (let i = 0; i < Object.keys(valuesObject as Object).length; i++) {
+            const keysLength = Object.keys(valuesObject as Object).length;
+            for (let i = 0; i < keysLength; i++) {
                 const key = Object.keys(values as Object)[i] ?? '';
                 if (typeof valuesObject[key] === 'string' && !isNaN(valuesObject[key])) valuesObject[key] = parseInt(valuesObject[key]);
             };
@@ -222,7 +223,8 @@ export default class Sheets extends Cache {
         const sheets = sheetResponse.data.sheets;
         if (!sheets) return 0;
         let sheetId = 0;
-        for (let i = 0; i < sheets.length; i++) {
+        const sheetsLength = sheets.length;
+        for (let i = 0; i < sheetsLength; i++) {
             if (sheets[i]?.properties?.title === this.currentSheetName) {
                 sheetId = i;
                 break;
@@ -242,7 +244,7 @@ export default class Sheets extends Cache {
         const range = `${this.currentSheetName}!${position.letter}${position.number}:${endLetter}${position.number}`;
 
         if (this.useCache) {
-            const cacheData = this.getCacheData(`${Sheets.instanceCounter}-${this.currentSheetName}-${this.cacheId}-headers`);
+            const cacheData = this.getCacheData(`${SheetsManager.instanceCounter}-${this.currentSheetName}-${this.cacheId}-headers`);
             if (typeof cacheData !== 'boolean') return cacheData;
         }
 
@@ -251,7 +253,7 @@ export default class Sheets extends Cache {
             range: range,
         });
         const response = tableHeaders?.data?.values?.length ? tableHeaders.data.values[0] : [];
-        if (this.useCache) this.updateCache(`${Sheets.instanceCounter}-${this.currentSheetName}-${this.cacheId}-headers`, response);
+        if (this.useCache) this.updateCache(`${SheetsManager.instanceCounter}-${this.currentSheetName}-${this.cacheId}-headers`, response);
 
         return response;
     };
@@ -261,7 +263,7 @@ export default class Sheets extends Cache {
      * @param positionTable Posición inicial de la tabla.  Formato: A:1 (opcional si ya se agrego en la instancia)
      * @returns {this}
      */
-    public changeTableInitPosition(positionTable: string): this {
+    public setTableInitPosition(positionTable: string): this {
         this.currentTablePosition = this.getPosition(positionTable);
         return this;
     };
@@ -271,7 +273,7 @@ export default class Sheets extends Cache {
      * @param sheetId ID de la hoja de calculo. Esta puede ser encontrada en el URL
      * @returns {this}
      */
-    public changeSheetId(sheetId: string): this {
+    public setSheetId(sheetId: string): this {
         this.currentSheetId = sheetId;
         return this;
     };
@@ -281,18 +283,18 @@ export default class Sheets extends Cache {
      * @param sheetName Nombre exacto de la hoja de calculo.
      * @returns {this}
      */
-    public changeSheetName(sheetName: string): this {
+    public setSheetName(sheetName: string): this {
         this.currentSheetName = sheetName;
         return this;
     };
 
     /**
      * @description Método para cambiar el nombre de la hoja de calculo y su ID  en una única función.
-     * @param sheetName Nombre exacto de la hoja de calculo.
      * @param sheetId  ID de la hoja de la hoja de calculo.
+     * @param sheetName Nombre exacto de la hoja de calculo.
      * @returns {this}
      */
-    public changeSheetInfo(sheetName: string, sheetId: string): this {
+    public setSheetInfo(sheetId: string, sheetName: string): this {
         this.currentSheetId = sheetId;
         this.currentSheetName = sheetName;
         return this;
@@ -304,7 +306,8 @@ export default class Sheets extends Cache {
      * @param filter Filtro para obtener los valores de la tabla filtrados. 
      * @returns {T[]} Todos los valores de la tabla indicada.
      */
-    public async getTableValues<T = any>({ initPosition, filter }: { initPosition?: string, filter?: { (val: T): boolean } }): Promise<T[]> {
+    public async getTableValues<T = any>(options?: { initPosition?: string, filter?: { (val: T): boolean } }): Promise<T[]> {
+        const { initPosition, filter } = options;
         const position = initPosition ? this.getPosition(initPosition) : this.currentTablePosition;
         const tableHeaders = await this.getTableHeaders(initPosition);
         const endLetter = await this.getLastColumn(position.letter, position.number);
@@ -312,7 +315,7 @@ export default class Sheets extends Cache {
         const range = `${this.currentSheetName}!${position.letter}${position.number + 1}:${endLetter}${position.number + endNumber + 1}`;
 
         if (this.useCache) {
-            const cache = this.getCacheData(`${Sheets.instanceCounter}-${this.currentSheetName}-${this.cacheId}-values`);
+            const cache = this.getCacheData(`${SheetsManager.instanceCounter}-${this.currentSheetName}-${this.cacheId}-values`);
             if (typeof cache !== 'boolean') {
                 if (filter) return cache.filter(filter);
                 return cache;
@@ -337,7 +340,7 @@ export default class Sheets extends Cache {
         };
         if (result.length === 1 && Object.values(result[0] as T[]).every(val => val === undefined)) return [];
 
-        if (this.useCache) this.updateCache(`${Sheets.instanceCounter}-${this.currentSheetName}-${this.cacheId}-values`, result);
+        if (this.useCache) this.updateCache(`${SheetsManager.instanceCounter}-${this.currentSheetName}-${this.cacheId}-values`, result);
         return typeof filter === 'function' ? result.filter(filter) : result as T[];
     };
 
@@ -345,11 +348,12 @@ export default class Sheets extends Cache {
      * @description Método para insertar uno o mas valores a una tabla por medio de un arreglo de objetos.
      * @param initPosition Posición inicial de la tabla a trabajar. Formato: A:1 (Opcional si ya se agrego en la instancia)
      * @param values Valores a insertar a la tabla indicada por medio de un objeto.
+     * @returns {boolean} `true` si se insertó correctamente, `false` si la inserción fracasó.
      */
-    public async insertValues<T>({ initPosition, values }: { initPosition?: string, values: T[] }) {
+    public async insertValues<T>({ initPosition, values }: { initPosition?: string, values: T[] }): Promise<boolean> {
         const position = initPosition ? this.getPosition(initPosition) : this.currentTablePosition;
         const finalValues = await this.objectToArray({ initPosition, values });
-        await this.sheets.spreadsheets.values.append({
+        const appendStatus = await this.sheets.spreadsheets.values.append({
             spreadsheetId: this.currentSheetId,
             range: `${this.currentSheetName}!${position.letter}${position.number}`,
             valueInputOption: 'USER_ENTERED',
@@ -358,7 +362,8 @@ export default class Sheets extends Cache {
                 values: finalValues
             }
         });
-        if (this.useCache) this.deleteCache(`${Sheets.instanceCounter}-${this.currentSheetName}-${this.cacheId}-values`);
+        if (this.useCache) this.deleteCache(`${SheetsManager.instanceCounter}-${this.currentSheetName}-${this.cacheId}-values`);
+        return [200, 201, 202].includes(appendStatus.status);
     };
 
     /**
@@ -384,7 +389,7 @@ export default class Sheets extends Cache {
         for (let row of rowsToEdit.toReversed()) {
             const initialValues = values.filter(filter)[0];
             const finalValues = { ...initialValues, ...valuesUpdate };
-            const valuesToUpdate = await this.objectToArray({ initPosition, values: [this.formatValues<T>(finalValues)] },);
+            const valuesToUpdate = await this.objectToArray({ initPosition, values: [this.formatValues<T>(finalValues)] });
             await this.sheets.spreadsheets.values.update({
                 spreadsheetId,
                 range: `${sheetName}!${position.letter}${row}:${endLetter}${row}`,
@@ -394,7 +399,7 @@ export default class Sheets extends Cache {
                 },
             });
         };
-        if (this.useCache) this.deleteCache(`${Sheets.instanceCounter}-${this.currentSheetName}-${this.cacheId}-values`);
+        if (this.useCache) this.deleteCache(`${SheetsManager.instanceCounter}-${this.currentSheetName}-${this.cacheId}-values`);
     };
 
     /**
@@ -437,7 +442,7 @@ export default class Sheets extends Cache {
                     ]
                 }
             });
-            if (this.useCache) this.deleteCache(`${Sheets.instanceCounter}-${this.currentSheetName}-${this.cacheId}-values`);
+            if (this.useCache) this.deleteCache(`${SheetsManager.instanceCounter}-${this.currentSheetName}-${this.cacheId}-values`);
         };
     };
 };
