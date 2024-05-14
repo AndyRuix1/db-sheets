@@ -220,17 +220,9 @@ export default class SheetsManager extends Cache {
      */
     private async getSheetIdBySheetName(): Promise<number> {
         const sheetResponse = await this.sheets.spreadsheets.get({ spreadsheetId: this.currentSheetId });
-        const sheets = sheetResponse.data.sheets;
-        if (!sheets) return 0;
-        let sheetId = 0;
-        const sheetsLength = sheets.length;
-        for (let i = 0; i < sheetsLength; i++) {
-            if (sheets[i]?.properties?.title === this.currentSheetName) {
-                sheetId = i;
-                break;
-            };
-        };
-        return sheetId;
+        const sheet = sheetResponse.data.sheets.find(sheet => sheet.properties.title === this.currentSheetName);
+        if (!sheet) return 0;
+        return sheet?.properties?.sheetId ?? 0;
     };
 
     /**
@@ -407,59 +399,42 @@ export default class SheetsManager extends Cache {
      * @description Método para eliminar filas por medio de un filtro.
      * @param initPosition Posición inicial de la tabla a trabajar. Formato: A:1 (Opcional si ya se agrego en la instancia)
      * @param filter Filtro con el que se buscaran las filas y eliminarlas.
-     * @returns {boolean[]} Lista de éxitos o fracasos siendo `true` para éxito y `false` para fracaso
+     * @returns {boolean} Estado de la operación: `true` para éxito y `false` para fracaso
      */
-    public async deleteRowsByFilter<T>({ initPosition, filter }: { initPosition?: string, filter: (val: T) => boolean }): Promise<boolean[]> {
+    public async deleteRowsByFilter<T>({ initPosition, filter }: { initPosition?: string, filter: (val: T) => boolean }): Promise<boolean> {
         const position = initPosition ? this.getPosition(initPosition) : this.currentTablePosition;
         const values = await this.getTableValues<T>({ initPosition: `${position.letter}:${position.number}` });
         const rowsToDelete: number[] = [];
         let currentRow = position.number;
-        for (let i in values) {
-            currentRow += 1;
-            const row = values[i];
-            if (filter(row)) rowsToDelete.push(currentRow);
-        };
 
-        if (rowsToDelete.length === 0) return [];
+        for (const row of values) {
+            currentRow += 1;
+            if (filter(row)) rowsToDelete.push(currentRow - 1);  // Adjusting to zero-based index
+        }
+
+        if (rowsToDelete.length === 0) return false;
         const [sheetId, tableHeaders] = await Promise.all([this.getSheetIdBySheetName(), this.getTableHeaders(`${position.letter}:${position.number}`)]);
         const endLetter = this.sumLetter(position.letter, tableHeaders.length + 1);
-        const deleteStatusList: number[] = [];
-        for (const row of rowsToDelete.toReversed()) {
-            console.log({
-                deleteRange: {
-                    shiftDimension: 'ROWS',
-                    range: {
-                        sheetId: sheetId,
-                        startRowIndex: row - 1,
-                        endRowIndex: row,
-                        startColumnIndex: this.letterToNumber(position.letter),
-                        endColumnIndex: this.letterToNumber(endLetter)
-                    }
-                }
-            })
-            const deleteStatus = await this.sheets.spreadsheets.batchUpdate({
-                spreadsheetId: this.currentSheetId,
-                requestBody: {
-                    requests: [
-                        {
-                            deleteRange: {
-                                shiftDimension: 'ROWS',
-                                range: {
-                                    sheetId: sheetId,
-                                    startRowIndex: row - 1,
-                                    endRowIndex: row,
-                                    startColumnIndex: this.letterToNumber(position.letter),
-                                    endColumnIndex: this.letterToNumber(endLetter)
-                                }
-                            }
-                        }
-                    ]
-                }
-            });
-            deleteStatusList.push(deleteStatus.status);
-        };
-        if (this.useCache) this.deleteCache(`${SheetsManager.instanceCounter}-${this.currentSheetName}-${this.cacheId}-values`);
 
-        return deleteStatusList.map(status => successCodes.includes(status));
+        const deleteRequests = rowsToDelete.toReversed().map(row => ({
+            deleteRange: {
+                shiftDimension: 'ROWS',
+                range: {
+                    sheetId: sheetId,
+                    startRowIndex: row,
+                    endRowIndex: row + 1,
+                    startColumnIndex: this.letterToNumber(position.letter),
+                    endColumnIndex: this.letterToNumber(endLetter)
+                }
+            }
+        }));
+
+        const deleteResponse = await this.sheets.spreadsheets.batchUpdate({
+            spreadsheetId: this.currentSheetId,
+            requestBody: { requests: deleteRequests }
+        });
+
+        if (this.useCache) this.deleteCache(`${SheetsManager.instanceCounter}-${this.currentSheetName}-${this.cacheId}-values`);
+        return successCodes.includes(deleteResponse.status);
     };
 };
