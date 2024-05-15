@@ -459,7 +459,6 @@ async function main() {
 main();
 ```
 
-
 # 🛠️ Desarrollo
 Esta biblioteca se encuentra actualmente en desarrollo y es de código abierto. ¡Nos encanta la colaboración de la comunidad! Si deseas contribuir, puedes hacerlo de las siguientes maneras
 
