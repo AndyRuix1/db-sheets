@@ -281,7 +281,7 @@ export default class SheetsManager extends Cache {
      * @param initPosition Posición inicial de la tabla a trabajar. Formato: A:1 (Opcional si ya se agrego en la instancia)
      * @param values Nuevos valores que tendrán las filas encontradas con el filtro.
      * @param filter Filtro con el que se buscarán las filas a afectar.
-     * @returns {boolean[]} Lista de estados de los valores ingresados. 
+     * @returns {boolean} Estado de la operación: `true` para éxito y `false` para fracaso
      */
     public async updateValues<T = any>({ initPosition, filter, valuesUpdate }: { initPosition?: string, filter: { (val: T): boolean }, valuesUpdate: Partial<T> }): Promise<boolean> {
         const position = initPosition ? getPosition(initPosition) : this.currentTablePosition;
