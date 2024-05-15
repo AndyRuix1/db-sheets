@@ -1,8 +1,8 @@
 {
   "name": "db-sheets",
   "version": "1.3.0",
-  "description": "Librería para manipular tablas de Google Sheets de manera dinámica con objetos y mucha facilidad.",
-  "main": "src/index.js",
+  "description": "Librería para manipular tablas de Google Sheets de manera dinámica con JSON.",
+  "main": "index.js",
   "scripts": {
     "build": "tsc -p . --diagnostics && ts-node post-compile.ts",
     "test": "jest"
@@ -13,6 +13,9 @@
     "google sheets with nodejs",
     "google sheets api nodejs"
   ],
+  "engines": {
+    "node": ">=21.7.3"
+  },
   "author": {
     "name": "Andy Kenway",
     "email": "andyruix1@gmail.com",
