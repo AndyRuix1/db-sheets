@@ -415,7 +415,7 @@ export default class SheetsManager extends Cache {
 
         for (const row of values) {
             currentRow += 1;
-            if (filter(row)) rowsToDelete.push(currentRow - 1);  // Adjusting to zero-based index
+            if (filter(row)) rowsToDelete.push(currentRow - 1);
         }
 
         if (rowsToDelete.length === 0) return false;
