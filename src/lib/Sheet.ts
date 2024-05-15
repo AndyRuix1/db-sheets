@@ -363,36 +363,42 @@ export default class SheetsManager extends Cache {
      * @param filter Filtro con el que se buscarán las filas a afectar.
      * @returns {boolean[]} Lista de estados de los valores ingresados. 
      */
-    public async updateValues<T = any>({ initPosition, filter, valuesUpdate }: { initPosition?: string, filter: { (val: T): boolean }, valuesUpdate: Partial<T> }): Promise<boolean[]> {
+    public async updateValues<T = any>({ initPosition, filter, valuesUpdate }: { initPosition?: string, filter: { (val: T): boolean }, valuesUpdate: Partial<T> }): Promise<boolean> {
         const position = initPosition ? this.getPosition(initPosition) : this.currentTablePosition;
         const spreadsheetId = this.currentSheetId;
         const sheetName = this.currentSheetName;
         const [values, endLetter] = await Promise.all([this.getTableValues<T>({ initPosition }), this.getLastColumn(position.letter, position.number)]);
-        const rowsToEdit: number[] = [];
+        const rowsToEdit: { rowNumber: number, values: T }[] = [];
         let currentRow = position.number
-        for (let i in values) {
+        for (const obj of values) {
             currentRow += 1;
-            const obj = values[i];
-            if (filter(obj)) rowsToEdit.push(currentRow);
-        };
-        if (rowsToEdit.length === 0) return;
-        const resultCodes: number[] = [];
-        for (let row of rowsToEdit.toReversed()) {
-            const initialValues = values.filter(filter)[0];
-            const finalValues = { ...initialValues, ...valuesUpdate };
-            const valuesToUpdate = await this.objectToArray({ initPosition, values: [this.formatValues<T>(finalValues)] });
-            const savedStatus = await this.sheets.spreadsheets.values.update({
-                spreadsheetId,
-                range: `${sheetName}!${position.letter}${row}:${endLetter}${row}`,
-                valueInputOption: 'RAW',
-                requestBody: {
-                    values: valuesToUpdate
-                }
+            if (filter(obj)) rowsToEdit.push({
+                rowNumber: currentRow,
+                values: this.formatValues<T>(obj)
             });
-            resultCodes.push(savedStatus.status);
         };
+
+        if (rowsToEdit.length === 0) return;
+        const requestData: sheets_v4.Schema$ValueRange[] = [];
+
+        for (const row of rowsToEdit.toReversed()) {
+            const finalValues = { ...row.values, ...valuesUpdate };
+            const valuesToUpdate = await this.objectToArray({ initPosition, values: [this.formatValues<T>(finalValues)] });
+            requestData.push({
+                majorDimension: 'ROWS',
+                values: valuesToUpdate,
+                range: `${sheetName}!${position.letter}${row.rowNumber}:${endLetter}${row.rowNumber}`
+            });
+        };
+        const savedStatus = await this.sheets.spreadsheets.values.batchUpdate({
+            spreadsheetId,
+            requestBody: {
+                valueInputOption: 'USER_ENTERED',
+                data: requestData
+            }
+        })
         if (this.useCache) this.deleteCache(`${SheetsManager.instanceCounter}-${this.currentSheetName}-${this.cacheId}-values`);
-        return resultCodes.map(result => successCodes.includes(result));
+        return successCodes.includes(savedStatus.status);
     };
 
     /**

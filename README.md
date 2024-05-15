@@ -288,4 +288,4 @@ const options = {
 }
 const wasUpdated = await mySheet.updateValues({})
 
-```ts
+```
