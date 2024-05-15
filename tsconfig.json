@@ -1,6 +1,6 @@
 {
     "compilerOptions": {
-        "declaration": false,
+        "declaration": true,
         "declarationMap": false,
         "diagnostics": true,
         "allowJs": false,
