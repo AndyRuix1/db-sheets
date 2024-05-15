@@ -1,6 +1,8 @@
+<img src="https://i.ibb.co/RH96s8S/DB-Sheets.png" width='100%' />
+
 > db-sheets es una biblioteca de código abierto que ofrece una solución integral para la interacción con hojas de cálculo de Google Sheets. Diseñada para simplificar la gestión de datos en línea, esta herramienta permite acceder, actualizar, eliminar y escribir datos en hojas de cálculo de forma dinámica y eficiente.
 
-## ❓ ¿Por qué usar esta herramienta?
+## ❔ ¿Por qué usar esta herramienta?
 > db-sheets se presenta como una herramienta esencial para los desarrolladores que buscan una solución efectiva para interactuar con hojas de cálculo de Google Sheets en sus aplicaciones. Esta biblioteca permite acceder, actualizar y manipular datos de hojas de cálculo de manera dinámica y eficiente utilizando JSON.
 > 
 > Un punto destacado de db-sheets es su capacidad para transformar automáticamente los datos de hojas de cálculo en objetos JSON, lo que facilita su manipulación y uso. Además, db-sheets ofrece una funcionalidad de caché que permite almacenar la información obtenida en la memoria RAM o en archivos JSON con la capacidad de configurar los tiempos de actualización, según la preferencia y necesidad del desarrollador.
@@ -32,7 +34,7 @@
 
 
 # 📜 Historial de cambios
-* Para ver el historial de cambios, puedes consultar [este enlace](https://github.com/).
+* Para ver el historial de cambios, puedes consultar [este enlace](https://github.com/AndyRuix1/db-sheets/blob/main/CHANGELOG.md).
 
 # 🔽 Instalación
 
