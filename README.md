@@ -427,7 +427,10 @@ async function updateBook(bookId: number, updatedData: Partial<Book>): Promise<v
 
 async function deleteBook(bookId: number): Promise<void> {
     try {
-        const wasDeleted = await mySheet.deleteRowsByFilter<Book>(book => book.id === bookId);
+        const options = {
+            filter: book => book.id === bookId
+        }
+        const wasDeleted = await mySheet.deleteRowsByFilter<Book>(options);
         wasDeleted ? console.log('¡Libro eliminado correctamente!') : console.log('Hubo un error al eliminar el libro.');
     } catch (error) {
         console.error('Error al eliminar el libro:', error);
