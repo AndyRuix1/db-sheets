@@ -4,7 +4,7 @@
   "description": "Librería para manipular tablas de Google Sheets de manera dinámica con objetos y mucha facilidad.",
   "main": "src/index.js",
   "scripts": {
-    "build": "tsc -p . --diagnostics",
+    "build": "tsc -p . --diagnostics && ts-node post-compile.ts",
     "test": "jest"
   },
   "keywords": [

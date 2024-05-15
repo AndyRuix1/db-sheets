@@ -14,5 +14,5 @@
         "moduleResolution": "node",
         "esModuleInterop": true,
     },
-    "exclude": ["src/test/**.*", "node_modules"]
+    "exclude": ["src/test/**.*", "node_modules", "post-compile.ts", "/test/**/**.*"]
 }
