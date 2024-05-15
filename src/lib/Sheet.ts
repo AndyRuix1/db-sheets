@@ -1,9 +1,10 @@
 import type { IAuthData, ITablePosition, ISheet$Options } from '../types/Sheet';
-import { google, sheets_v4 } from 'googleapis';
+import { google, type sheets_v4 } from 'googleapis';
 import { GoogleAuth, JWT } from 'google-auth-library';
 import { generateRandomId } from './util';
+import { getPosition, sumLetter, successCodes, letterToNumber, formatValues } from './help';
 import Cache from './Cache';
-const successCodes: Readonly<number[]> = [200, 201, 202];
+
 export default class SheetsManager extends Cache {
     private static instanceCounter = 0;
     private sheets: sheets_v4.Sheets;
@@ -47,70 +48,6 @@ export default class SheetsManager extends Cache {
     };
 
     /**
-     * @description Método para conocer la siguiente letra a partir de una, ejemplo: A -> B, AA -> AB, ZZ -> AAA
-     * @param letter Letra a procesar
-     * @returns Letra procesada.
-     */
-    private getNextLetterPosition(letter: string): string {
-        let result = "";
-        if (letter === 'Z') return 'AA';
-        for (let i = letter.length - 1; i >= 0; i--) {
-            const c = letter[i];
-            if (c === "Z") result += "A";
-            else {
-                result += String.fromCharCode(c.charCodeAt(0) + 1);
-                break;
-            };
-        };
-        if (result.length < letter.length) result += "A".repeat(letter.length - result.length);
-        return result.split("").reverse().join("");
-    };
-
-    /**
-     * @description Método para sumar letras a partir de una letra, ejemplo: (A, 2) -> C | (AA, 2) -> AC
-     * @param letter Letra la cual se quiere sumar.
-     * @param count Numero de veces para sumar la letra
-     * @returns Letra correspondiente a las sumas anteriores.
-     */
-    private sumLetter(letter: string, count?: number): string {
-        letter = letter.toUpperCase();
-        if (!count) count = 1;
-        for (let i = 0; i < count; i++) {
-            letter = this.getNextLetterPosition(letter);
-        };
-        return letter;
-    };
-
-    /**
-     * @description Retorna el numero correspondiente al abecedario, en caso de superar la Z (ej: AA, AB, etc) se devuelve el numero correspondiente para una hoja de calculo.
-     * @param letter Letra la cual requiere transformar a numérico.
-     * @return numero correspondiente a la letra.
-     */
-    private letterToNumber(letter: string): number {
-        if (letter.length > 1) {
-            let letterNumber = 0;
-            for (let i = 0; i < letter.length; i++) {
-                letterNumber = letterNumber * 26 + letter.charCodeAt(i) - 64;
-            }
-            return letterNumber;
-        };
-        return letter.charCodeAt(0) - 65;
-    };
-
-    /**
-     * @description Formatea la posición para hacerla mas manejable.
-     * @param position Posición a formatear, ejemplo: B:4
-     * @returns Se retorna un objeto separando la letra del numero.
-     */
-    private getPosition(position: string): ITablePosition {
-        const positionSplitted = position.split(':');
-        return {
-            letter: positionSplitted[0],
-            number: Number(positionSplitted[1])
-        };
-    };
-
-    /**
      * @description obtiene la ultima columna con un valor. 
      * @param positionLetter Letra de la posición inicial de la tabla.
      * @param positionNumber Numero de la posición inicial de la tabla
@@ -130,7 +67,7 @@ export default class SheetsManager extends Cache {
         let lastColumnWithValue = positionLetter;
 
         for (let i = 0; i < values.length; i++) {
-            if (values[i]) lastColumnWithValue = this.sumLetter(lastColumnWithValue);
+            if (values[i]) lastColumnWithValue = sumLetter(lastColumnWithValue);
         };
 
         if (lastColumnWithValue.length > 0) {
@@ -141,7 +78,7 @@ export default class SheetsManager extends Cache {
             });
             values = response?.data?.values ? response?.data?.values[0] : [];
             for (let i in values) {
-                lastColumnWithValue = this.sumLetter(lastColumnWithValue);
+                lastColumnWithValue = sumLetter(lastColumnWithValue);
             };
         };
 
@@ -181,7 +118,7 @@ export default class SheetsManager extends Cache {
      * @returns Arreglo con todos los datos preparados para ser insertados en su respectiva tabla
      */
     private async objectToArray({ initPosition, values }: { initPosition?: string, values: any[] }): Promise<string[][]> {
-        const position = initPosition ? this.getPosition(initPosition) : this.currentTablePosition;
+        const position = initPosition ? getPosition(initPosition) : this.currentTablePosition;
         const headers = await this.getTableHeaders(`${position.letter}:${position.number}`);
         const finalValues: string[][] = [];
         values.forEach((value) => {
@@ -195,23 +132,6 @@ export default class SheetsManager extends Cache {
             finalValues.push(tempArray);
         });
         return finalValues;
-    };
-
-    /**
-     * @description Método para preparar valores.
-     * @param values Objeto de los valores a trabajar 
-     * @returns {T} Objeto con sus valores formateados (string numérico > números enteros)
-     */
-    private formatValues<T>(values: T): T {
-        const valuesObject = { ...values };
-        if (typeof values === 'object' && values !== null) {
-            const keysLength = Object.keys(valuesObject as Object).length;
-            for (let i = 0; i < keysLength; i++) {
-                const key = Object.keys(values as Object)[i] ?? '';
-                if (typeof valuesObject[key] === 'string' && !isNaN(valuesObject[key])) valuesObject[key] = parseInt(valuesObject[key]);
-            };
-        };
-        return valuesObject as T;
     };
 
     /**
@@ -231,7 +151,7 @@ export default class SheetsManager extends Cache {
      * @returns Cabeceras de la tabla completa desde el inicio hasta la posición con valor conocida.
      */
     public async getTableHeaders(initialPosition?: string): Promise<string[]> {
-        const position = initialPosition ? this.getPosition(initialPosition) : this.currentTablePosition;
+        const position = initialPosition ? getPosition(initialPosition) : this.currentTablePosition;
         const endLetter = await this.getLastColumn(position.letter, position.number);
         const range = `${this.currentSheetName}!${position.letter}${position.number}:${endLetter}${position.number}`;
 
@@ -256,7 +176,7 @@ export default class SheetsManager extends Cache {
      * @returns {this}
      */
     public setTableInitPosition(positionTable: string): this {
-        this.currentTablePosition = this.getPosition(positionTable);
+        this.currentTablePosition = getPosition(positionTable);
         return this;
     };
 
@@ -300,7 +220,7 @@ export default class SheetsManager extends Cache {
      */
     public async getTableValues<T = any>(options?: { initPosition?: string, filter?: { (val: T): boolean } }): Promise<T[]> {
         const { initPosition, filter } = options ?? { initPosition: undefined, filter: undefined };
-        const position = initPosition ? this.getPosition(initPosition) : this.currentTablePosition;
+        const position = initPosition ? getPosition(initPosition) : this.currentTablePosition;
 
         if (this.useCache) {
             const cache = this.getCacheData(`${SheetsManager.instanceCounter}-${this.currentSheetName}-${this.cacheId}-values`);
@@ -341,7 +261,7 @@ export default class SheetsManager extends Cache {
      * @returns {boolean} `true` si se insertó correctamente, `false` si la inserción fracasó.
      */
     public async insertValues<T>({ initPosition, values }: { initPosition?: string, values: T[] }): Promise<boolean> {
-        const position = initPosition ? this.getPosition(initPosition) : this.currentTablePosition;
+        const position = initPosition ? getPosition(initPosition) : this.currentTablePosition;
         const finalValues = await this.objectToArray({ initPosition, values });
         const appendStatus = await this.sheets.spreadsheets.values.append({
             spreadsheetId: this.currentSheetId,
@@ -364,7 +284,7 @@ export default class SheetsManager extends Cache {
      * @returns {boolean[]} Lista de estados de los valores ingresados. 
      */
     public async updateValues<T = any>({ initPosition, filter, valuesUpdate }: { initPosition?: string, filter: { (val: T): boolean }, valuesUpdate: Partial<T> }): Promise<boolean> {
-        const position = initPosition ? this.getPosition(initPosition) : this.currentTablePosition;
+        const position = initPosition ? getPosition(initPosition) : this.currentTablePosition;
         const spreadsheetId = this.currentSheetId;
         const sheetName = this.currentSheetName;
         const [values, endLetter] = await Promise.all([this.getTableValues<T>({ initPosition }), this.getLastColumn(position.letter, position.number)]);
@@ -374,7 +294,7 @@ export default class SheetsManager extends Cache {
             currentRow += 1;
             if (filter(obj)) rowsToEdit.push({
                 rowNumber: currentRow,
-                values: this.formatValues<T>(obj)
+                values: formatValues<T>(obj)
             });
         };
 
@@ -383,7 +303,7 @@ export default class SheetsManager extends Cache {
 
         for (const row of rowsToEdit.toReversed()) {
             const finalValues = { ...row.values, ...valuesUpdate };
-            const valuesToUpdate = await this.objectToArray({ initPosition, values: [this.formatValues<T>(finalValues)] });
+            const valuesToUpdate = await this.objectToArray({ initPosition, values: [formatValues<T>(finalValues)] });
             requestData.push({
                 majorDimension: 'ROWS',
                 values: valuesToUpdate,
@@ -408,7 +328,7 @@ export default class SheetsManager extends Cache {
      * @returns {boolean} Estado de la operación: `true` para éxito y `false` para fracaso
      */
     public async deleteRowsByFilter<T>({ initPosition, filter }: { initPosition?: string, filter: (val: T) => boolean }): Promise<boolean> {
-        const position = initPosition ? this.getPosition(initPosition) : this.currentTablePosition;
+        const position = initPosition ? getPosition(initPosition) : this.currentTablePosition;
         const values = await this.getTableValues<T>({ initPosition: `${position.letter}:${position.number}` });
         const rowsToDelete: number[] = [];
         let currentRow = position.number;
@@ -420,7 +340,7 @@ export default class SheetsManager extends Cache {
 
         if (rowsToDelete.length === 0) return false;
         const [sheetId, tableHeaders] = await Promise.all([this.getSheetIdBySheetName(), this.getTableHeaders(`${position.letter}:${position.number}`)]);
-        const endLetter = this.sumLetter(position.letter, tableHeaders.length + 1);
+        const endLetter = sumLetter(position.letter, tableHeaders.length + 1);
 
         const deleteRequests = rowsToDelete.toReversed().map(row => ({
             deleteRange: {
@@ -429,8 +349,8 @@ export default class SheetsManager extends Cache {
                     sheetId: sheetId,
                     startRowIndex: row,
                     endRowIndex: row + 1,
-                    startColumnIndex: this.letterToNumber(position.letter),
-                    endColumnIndex: this.letterToNumber(endLetter)
+                    startColumnIndex: letterToNumber(position.letter),
+                    endColumnIndex: letterToNumber(endLetter)
                 }
             }
         }));
